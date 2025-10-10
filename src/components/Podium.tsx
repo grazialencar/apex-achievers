@@ -5,7 +5,6 @@ import { Progress } from "@/components/ui/progress";
 interface Seller {
   id: string;
   name: string;
-  avatar: string;
   value: number;
   goal?: number;
 }
@@ -68,17 +67,15 @@ export const Podium = ({ sellers }: PodiumProps) => {
               <Trophy className="absolute top-4 left-4 w-10 h-10 text-gold animate-celebration" />
             )}
 
-            {/* Avatar */}
+            {/* Initials */}
             <div
-              className={`w-24 h-24 rounded-full overflow-hidden mb-4 border-4 ${
-                isFirst ? "border-gold" : "border-border"
+              className={`w-24 h-24 rounded-full mb-4 border-4 flex items-center justify-center ${
+                isFirst ? "border-gold bg-gold/20" : "border-border bg-muted/30"
               }`}
             >
-              <img
-                src={seller.avatar}
-                alt={seller.name}
-                className="w-full h-full object-cover"
-              />
+              <span className={`text-3xl font-bold ${isFirst ? "text-gold" : "text-foreground"}`}>
+                {seller.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+              </span>
             </div>
 
             {/* Name */}

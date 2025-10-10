@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,28 +12,40 @@ import { Plus, Trophy, Users } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 
-const mockVendors = [
-  { id: "1", name: "Carlos Silva" },
-  { id: "2", name: "Ana Costa" },
-  { id: "3", name: "Roberto Oliveira" },
-  { id: "4", name: "Juliana Santos" },
-  { id: "5", name: "Pedro Almeida" },
-  { id: "6", name: "Mariana Lima" },
-  { id: "7", name: "Felipe Souza" },
-];
-
 const Admin = () => {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  
+  const [sellers, setSellers] = useState<any[]>([]);
   const [rankingName, setRankingName] = useState("");
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
-  const [metricType, setMetricType] = useState<"monetary" | "points">("monetary");
+  const [metricType, setMetricType] = useState<"value" | "points">("value");
   const [hasGoals, setHasGoals] = useState(false);
-  const [hasPrizes, setHasPrizes] = useState(false);
   const [individualGoal, setIndividualGoal] = useState("");
   const [teamGoal, setTeamGoal] = useState("");
-  const [prizes, setPrizes] = useState({ first: "", second: "", third: "" });
+  const [hasPrizes, setHasPrizes] = useState(false);
+  const [firstPrize, setFirstPrize] = useState("");
+  const [secondPrize, setSecondPrize] = useState("");
+  const [thirdPrize, setThirdPrize] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+      return;
+    }
+    
+    if (user) {
+      fetchSellers();
+    }
+  }, [user, authLoading, navigate]);
+
+  const fetchSellers = async () => {
+    const { data } = await supabase.from('profiles').select('*');
+    setSellers(data || []);
+  };
 
   const toggleVendor = (vendorId: string) => {
     setSelectedVendors((prev) =>
@@ -40,47 +55,101 @@ const Admin = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!rankingName || selectedVendors.length === 0) {
+
+    if (!rankingName.trim()) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Preencha o nome do ranking e selecione pelo menos um participante.",
+        title: "Erro",
+        description: "Por favor, insira um nome para o ranking.",
         variant: "destructive",
       });
       return;
     }
 
-    toast({
-      title: "Ranking criado com sucesso!",
-      description: `${rankingName} foi criado com ${selectedVendors.length} participantes.`,
-    });
+    if (selectedVendors.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione ao menos um participante.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Reset form
-    setRankingName("");
-    setSelectedVendors([]);
-    setHasGoals(false);
-    setHasPrizes(false);
-    setIndividualGoal("");
-    setTeamGoal("");
-    setPrizes({ first: "", second: "", third: "" });
-    setStartDate("");
-    setEndDate("");
+    try {
+      const { data: campaign, error: campaignError } = await supabase
+        .from('campaigns')
+        .insert({
+          name: rankingName,
+          start_date: startDate,
+          end_date: endDate,
+          metric_type: metricType,
+          team_goal: hasGoals && teamGoal ? Number(teamGoal) : null,
+          first_place_prize: hasPrizes ? firstPrize : null,
+          second_place_prize: hasPrizes ? secondPrize : null,
+          third_place_prize: hasPrizes ? thirdPrize : null,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (campaignError) throw campaignError;
+
+      const campaignSellers = selectedVendors.map(sellerId => ({
+        campaign_id: campaign.id,
+        seller_id: sellerId,
+        individual_goal: hasGoals && individualGoal ? Number(individualGoal) : null,
+      }));
+
+      const { error: sellersError } = await supabase
+        .from('campaign_sellers')
+        .insert(campaignSellers);
+
+      if (sellersError) throw sellersError;
+
+      toast({
+        title: "Ranking criado!",
+        description: `O ranking "${rankingName}" foi criado com sucesso.`,
+      });
+
+      navigate(`/ranking/${campaign.id}`);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-primary flex items-center justify-center">
+        <p className="text-white text-xl">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-primary p-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <img src={logo} alt="Alencar Corretora" className="h-12" />
-          <h1 className="text-3xl font-bold text-gold">Painel Administrativo</h1>
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-4">
+            <img src={logo} alt="Alencar Corretora" className="h-12" />
+            <h1 className="text-3xl font-bold text-gold">Painel Administrativo</h1>
+          </div>
+          <Button onClick={handleLogout} variant="outline">
+            Sair
+          </Button>
         </div>
 
         <Card className="bg-card border-gold/30 p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Nome do Ranking */}
             <div className="space-y-2">
               <Label htmlFor="ranking-name" className="text-lg font-semibold text-gold">
                 Nome do Ranking
@@ -94,42 +163,40 @@ const Admin = () => {
               />
             </div>
 
-            {/* Participantes */}
             <div className="space-y-4">
               <Label className="text-lg font-semibold text-gold flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 Selecionar Participantes
               </Label>
               <div className="grid grid-cols-2 gap-3">
-                {mockVendors.map((vendor) => (
+                {sellers.map((seller) => (
                   <div
-                    key={vendor.id}
+                    key={seller.id}
                     className="flex items-center space-x-3 bg-background/50 p-3 rounded-lg border border-border hover:border-gold/50 transition-colors"
                   >
                     <Checkbox
-                      id={vendor.id}
-                      checked={selectedVendors.includes(vendor.id)}
-                      onCheckedChange={() => toggleVendor(vendor.id)}
+                      id={seller.id}
+                      checked={selectedVendors.includes(seller.id)}
+                      onCheckedChange={() => toggleVendor(seller.id)}
                     />
                     <label
-                      htmlFor={vendor.id}
+                      htmlFor={seller.id}
                       className="text-sm font-medium leading-none cursor-pointer"
                     >
-                      {vendor.name}
+                      {seller.name}
                     </label>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Tipo de Métrica */}
             <div className="space-y-3">
               <Label className="text-lg font-semibold text-gold">Tipo de Métrica</Label>
               <div className="flex gap-4">
                 <Button
                   type="button"
-                  variant={metricType === "monetary" ? "default" : "outline"}
-                  onClick={() => setMetricType("monetary")}
+                  variant={metricType === "value" ? "default" : "outline"}
+                  onClick={() => setMetricType("value")}
                   className="flex-1"
                 >
                   Valor Monetário (R$)
@@ -145,7 +212,6 @@ const Admin = () => {
               </div>
             </div>
 
-            {/* Metas */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-lg font-semibold text-gold">Adicionar Metas?</Label>
@@ -175,7 +241,6 @@ const Admin = () => {
               )}
             </div>
 
-            {/* Premiação */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-lg font-semibold text-gold flex items-center gap-2">
@@ -190,8 +255,8 @@ const Admin = () => {
                     <Label>1º Lugar</Label>
                     <Input
                       placeholder="Ex: iPhone 15 Pro + Viagem"
-                      value={prizes.first}
-                      onChange={(e) => setPrizes({ ...prizes, first: e.target.value })}
+                      value={firstPrize}
+                      onChange={(e) => setFirstPrize(e.target.value)}
                       className="bg-background border-border"
                     />
                   </div>
@@ -199,8 +264,8 @@ const Admin = () => {
                     <Label>2º Lugar</Label>
                     <Input
                       placeholder="Ex: iPad + Vale Compras"
-                      value={prizes.second}
-                      onChange={(e) => setPrizes({ ...prizes, second: e.target.value })}
+                      value={secondPrize}
+                      onChange={(e) => setSecondPrize(e.target.value)}
                       className="bg-background border-border"
                     />
                   </div>
@@ -208,8 +273,8 @@ const Admin = () => {
                     <Label>3º Lugar</Label>
                     <Input
                       placeholder="Ex: Apple Watch"
-                      value={prizes.third}
-                      onChange={(e) => setPrizes({ ...prizes, third: e.target.value })}
+                      value={thirdPrize}
+                      onChange={(e) => setThirdPrize(e.target.value)}
                       className="bg-background border-border"
                     />
                   </div>
@@ -217,7 +282,6 @@ const Admin = () => {
               )}
             </div>
 
-            {/* Duração */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data de Início</Label>
@@ -239,7 +303,6 @@ const Admin = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
             <Button
               type="submit"
               className="w-full bg-gradient-gold text-primary font-bold text-lg h-12"

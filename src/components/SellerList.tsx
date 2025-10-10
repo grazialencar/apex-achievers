@@ -4,7 +4,6 @@ import { Progress } from "@/components/ui/progress";
 interface Seller {
   id: string;
   name: string;
-  avatar: string;
   value: number;
   goal?: number;
 }
@@ -36,13 +35,11 @@ export const SellerList = ({ sellers }: SellerListProps) => {
                 {position}º
               </div>
 
-              {/* Avatar */}
-              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-border">
-                <img
-                  src={seller.avatar}
-                  alt={seller.name}
-                  className="w-full h-full object-cover"
-                />
+              {/* Initials */}
+              <div className="w-14 h-14 rounded-full bg-muted/30 border-2 border-border flex items-center justify-center">
+                <span className="text-lg font-bold">
+                  {seller.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                </span>
               </div>
 
               {/* Info */}

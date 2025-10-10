@@ -14,7 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaign_sellers: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          id: string
+          individual_goal: number | null
+          seller_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          id?: string
+          individual_goal?: number | null
+          seller_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          id?: string
+          individual_goal?: number | null
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_sellers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_sellers_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          end_date: string
+          first_place_prize: string | null
+          id: string
+          metric_type: string
+          name: string
+          second_place_prize: string | null
+          start_date: string
+          team_goal: number | null
+          third_place_prize: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date: string
+          first_place_prize?: string | null
+          id?: string
+          metric_type: string
+          name: string
+          second_place_prize?: string | null
+          start_date: string
+          team_goal?: number | null
+          third_place_prize?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string
+          first_place_prize?: string | null
+          id?: string
+          metric_type?: string
+          name?: string
+          second_place_prize?: string | null
+          start_date?: string
+          team_goal?: number | null
+          third_place_prize?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          id: string
+          seller_id: string
+          value: number
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          id?: string
+          seller_id: string
+          value: number
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          id?: string
+          seller_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
